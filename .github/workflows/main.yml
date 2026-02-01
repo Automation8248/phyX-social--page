@@ -1,10 +1,12 @@
-name: Daily Physics Video
+name: Daily Physics Video Bot
 
 on:
   schedule:
-    # Runs everyday at 06:00 UTC (Adjust as per need)
-    - cron: '0 6 * * *'
-  workflow_dispatch: # Allows manual run button
+    - cron: '0 6 * * *' # Daily at 6 AM UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write # Ye permission zaroori hai file delete karne ke liye
 
 jobs:
   run-bot:
@@ -20,7 +22,7 @@ jobs:
           python-version: '3.9'
 
       - name: Install Dependencies
-        run: pip install -r requirements.txt
+        run: pip install requests
 
       - name: Run Automation Script
         env:
@@ -29,11 +31,17 @@ jobs:
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: python main.py
 
-      - name: Commit and Push History
-        # Ye step bahut zaroori hai tabhi "No Repeat" logic kaam karega
+      - name: Commit and Push Deletion
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
-          git add history.txt
-          git commit -m "Update video history log [skip ci]" || echo "No changes to commit"
-          git push
+          
+          # Check agar koi change (deletion) hua hai
+          if [ -n "$(git status --porcelain)" ]; then
+            git add -u content/video/ # Sirf deleted files ko stage karega
+            git commit -m "Deleted processed video to prevent repeat [skip ci]"
+            git push
+            echo "Video successfully deleted from repository."
+          else
+            echo "No video was processed or deleted."
+          fi
