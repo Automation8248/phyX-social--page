@@ -11,29 +11,30 @@ WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 VIDEO_DIR = "content/video"
 
 def get_ai_caption(filename):
-    """Generates a Physics-related caption using Pollinations AI"""
-    # Filename se extension hatakar topic banate hain
+    """Generates a one-line Physics caption using Pollinations AI"""
     topic = filename.replace(".mp4", "").replace("_", " ")
     
+    # YAHAN CHANGES KIYE HAIN:
+    # "Exactly ONE sentence" aur "SEO hashtags" ka instruction diya hai
     prompt = (
-        f"Write a short, engaging Instagram caption for a physics video about '{topic}'. "
-        "Include 2 interesting scientific facts and SEO hashtags like #Physics #Science #Education #STEM. "
-        "Keep it concise and exciting for students."
+        f"Write exactly ONE catchy sentence about '{topic}' for a physics video. "
+        "Add 3-4 high-traffic SEO hashtags at the end. "
+        "Do not write anything else."
     )
     
     encoded_prompt = urllib.parse.quote(prompt)
     url = f"https://text.pollinations.ai/{encoded_prompt}"
     
     try:
-        # Timeout 15s set kiya hai taaki late na ho
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
             return response.text
         else:
-            return f"Check out this amazing Physics video on {topic}! 🚀 #Physics #Science #Education"
+            # Fallback agar AI fail ho jaye
+            return f"Watch this amazing physics concept: {topic} ⚛️ #Physics #Science #Education"
     except Exception as e:
         print(f"AI Error: {e}")
-        return f"Amazing Physics content: {topic} #Science #Physics"
+        return f"New Physics Video: {topic} #Physics #Science"
 
 def upload_to_catbox(file_path):
     """Uploads video to Catbox.moe and returns the URL"""
