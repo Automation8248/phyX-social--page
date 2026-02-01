@@ -2,18 +2,20 @@ name: Daily Physics Video Bot
 
 on:
   schedule:
-    - cron: '0 6 * * *' # Daily at 6 AM UTC
-  workflow_dispatch:
+    # 5:30 AM UTC par chalega (India mein approx 11:00 AM)
+    # Time change karne ke liye '30 5' ko badal lein
+    - cron: '30 5 * * *'
+  workflow_dispatch: # Manual Run button ke liye
 
 permissions:
-  contents: write # Ye permission zaroori hai file delete karne ke liye
+  contents: write # Ye sabse zaroori hai video delete karne ke liye
 
 jobs:
-  run-bot:
+  process-video:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Repository
+      - name: Checkout Code
         uses: actions/checkout@v3
 
       - name: Set up Python
@@ -24,24 +26,27 @@ jobs:
       - name: Install Dependencies
         run: pip install requests
 
-      - name: Run Automation Script
+      - name: Run Script with Timeout
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-        run: python main.py
+        # Logic: 110 seconds (1m 50s) ke baad script kill ho jayega
+        # Agar timeout hua, to agla step (Delete) run NAHI karega (Safe mode)
+        run: timeout 110s python main.py
 
-      - name: Commit and Push Deletion
+      - name: Delete Processed Video from Repo
+        # Ye step tabhi chalega agar Python script success raha (Timeout nahi hua)
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
           
-          # Check agar koi change (deletion) hua hai
+          # Check karein agar koi file delete hui hai
           if [ -n "$(git status --porcelain)" ]; then
-            git add -u content/video/ # Sirf deleted files ko stage karega
+            git add -u content/video/
             git commit -m "Deleted processed video to prevent repeat [skip ci]"
             git push
-            echo "Video successfully deleted from repository."
+            echo "SUCCESS: Video permanently deleted from repository."
           else
-            echo "No video was processed or deleted."
+            echo "No video processed or script failed before deletion."
           fi
