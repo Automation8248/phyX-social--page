@@ -3,22 +3,32 @@ import requests
 import urllib.parse
 import sys
 
-# --- CONFIGURATION (Environment Variables) ---
+# --- CONFIGURATION ---
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 WEBHOOK_URL = os.environ.get("WEBHOOK_URL")
 
 VIDEO_DIR = "content/video"
 
-def get_ai_caption(filename):
-    """Generates a one-line Physics caption using Pollinations AI"""
+def get_formatted_caption(filename):
+    """
+    Generates a specific format:
+    Hook
+    .
+    .
+    .
+    .
+    .
+    Hashtags
+    """
     topic = filename.replace(".mp4", "").replace("_", " ")
     
-    # YAHAN CHANGES KIYE HAIN:
-    # "Exactly ONE sentence" aur "SEO hashtags" ka instruction diya hai
+    # Prompt logic: Hum AI ko bolenge Hook aur Hashtags ke beech mein '|' lagaye
+    # Taki hum Python se usko todkar beech mein dots daal sakein perfect format ke liye.
     prompt = (
-        f"Write exactly ONE catchy sentence about '{topic}' for a physics video. "
-        "Add 3-4 high-traffic SEO hashtags at the end. "
+        f"Write a viral one-line hook sentence for a physics video about '{topic}'. "
+        "Then write the symbol '|'. "
+        "Then list 7 high-traffic SEO hashtags including #explore and #physics. "
         "Do not write anything else."
     )
     
@@ -28,37 +38,47 @@ def get_ai_caption(filename):
     try:
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
-            return response.text
+            content = response.text.strip()
+            
+            # Agar AI ne sahi se '|' lagaya hai to split karke format banayenge
+            if "|" in content:
+                parts = content.split("|")
+                hook = parts[0].strip()
+                hashtags = parts[1].strip()
+            else:
+                # Fallback agar AI format bhool gaya
+                hook = content
+                hashtags = f"#explore #physics #science #viral #{topic.replace(' ', '')}"
+            
+            # FINAL FORMATTING (Ye wahi structure hai jo aapne manga)
+            final_caption = f"{hook}\n.\n.\n.\n.\n.\n{hashtags}"
+            return final_caption
+            
         else:
-            # Fallback agar AI fail ho jaye
-            return f"Watch this amazing physics concept: {topic} ⚛️ #Physics #Science #Education"
+            return f"Physics Magic: {topic} ✨\n.\n.\n.\n.\n.\n#explore #physics #science"
+            
     except Exception as e:
         print(f"AI Error: {e}")
-        return f"New Physics Video: {topic} #Physics #Science"
+        return f"Amazing Physics Fact: {topic}\n.\n.\n.\n.\n.\n#explore #physics #science"
 
 def upload_to_catbox(file_path):
-    """Uploads video to Catbox.moe and returns the URL"""
     url = "https://catbox.moe/user/api.php"
     try:
         with open(file_path, "rb") as f:
             data = {"reqtype": "fileupload", "userhash": ""}
             files = {"fileToUpload": f}
             print("Uploading to Catbox (Max 60s)...")
-            # Timeout 60s (Agar 1 min me upload nahi hua to fail)
             response = requests.post(url, data=data, files=files, timeout=60)
             if response.status_code == 200:
                 return response.text.strip()
             else:
-                print(f"Catbox Error: {response.text}")
                 return None
     except Exception as e:
-        print(f"Upload Exception: {e}")
+        print(f"Upload Error: {e}")
         return None
 
 def send_to_telegram(video_url, caption):
-    """Sends the video URL and caption to Telegram"""
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
-        print("Telegram credentials missing.")
         return
 
     api_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendVideo"
@@ -66,74 +86,58 @@ def send_to_telegram(video_url, caption):
         "chat_id": TELEGRAM_CHAT_ID,
         "video": video_url,
         "caption": caption,
-        "parse_mode": "Markdown"
     }
-    try:
-        requests.post(api_url, json=payload, timeout=15)
-        print("Sent to Telegram.")
-    except Exception as e:
-        print(f"Telegram Error: {e}")
+    # Timeout 10s
+    requests.post(api_url, json=payload, timeout=10)
 
 def send_to_webhook(video_url, caption):
-    """Sends the data to your Webhook"""
     if not WEBHOOK_URL: 
         return
 
+    # User requirement: "Content ke niche only caption aana chahie"
+    # Isliye hum payload mein direct wahi caption bhej rahe hain
     payload = {
-        "content": "New Physics Video Dropped! ⚛️",
-        "video_url": video_url,
-        "caption": caption
+        "content": caption, 
+        "video_url": video_url
     }
-    try:
-        requests.post(WEBHOOK_URL, json=payload, timeout=10)
-        print("Sent to Webhook.")
-    except Exception as e:
-        print(f"Webhook Error: {e}")
+    requests.post(WEBHOOK_URL, json=payload, timeout=10)
 
 def main():
-    print("--- Starting Physics Bot ---")
-
-    # 1. Folder aur Files Check
+    # 1. Folder Check
     if not os.path.exists(VIDEO_DIR):
-        print(f"Error: Directory '{VIDEO_DIR}' not found.")
         sys.exit(0)
 
-    # Sirf .mp4 files dhoondhein
+    # 2. Files List
     files = [f for f in os.listdir(VIDEO_DIR) if f.endswith(('.mp4', '.mkv', '.mov'))]
-    
     if not files:
-        print("No videos found to process.")
-        sys.exit(0) # Clean exit if empty
+        print("No videos found.")
+        sys.exit(0)
 
-    # 2. Select First Video
+    # 3. Process First Video
     video_to_process = files[0]
     file_path = os.path.join(VIDEO_DIR, video_to_process)
-    print(f"Selected Video: {video_to_process}")
+    print(f"Processing: {video_to_process}")
 
-    # 3. Upload (Critical Step)
+    # 4. Upload
     catbox_url = upload_to_catbox(file_path)
     if not catbox_url:
-        print("Upload failed. Exiting WITHOUT deleting file.")
-        sys.exit(1) # Error code taaki GitHub Actions fail mark ho
-    
-    print(f"Video URL: {catbox_url}")
+        print("Upload failed.")
+        sys.exit(1)
 
-    # 4. Generate AI Caption
-    caption = get_ai_caption(video_to_process)
+    # 5. Generate Formatted Caption
+    caption = get_formatted_caption(video_to_process)
     print("Caption Generated.")
 
-    # 5. Send to Platforms
+    # 6. Send
     send_to_telegram(catbox_url, caption)
     send_to_webhook(catbox_url, caption)
 
-    # 6. DELETE LOGIC (Process complete, delete local file)
+    # 7. Delete File (Taaki repeat na ho)
     try:
         os.remove(file_path)
-        print(f"SUCCESS: Deleted '{video_to_process}' to prevent repeat.")
+        print(f"Deleted: {video_to_process}")
     except Exception as e:
-        print(f"Error deleting file: {e}")
-        # Note: Agar yahan delete fail bhi hua, to GitHub Actions ka `git commit` step handle nahi karega.
-        # Lekin `os.remove` usually reliable hota hai.
+        print(f"Delete Error: {e}")
 
 if __name__ == "__main__":
     main()
