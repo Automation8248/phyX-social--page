@@ -1,52 +1,33 @@
-name: Daily Physics Video Bot
+name: DeepAI Anime Automation Bot
 
 on:
+  workflow_dispatch: # Manual button se chalane ke liye
   schedule:
-    # 5:30 AM UTC par chalega (India mein approx 11:00 AM)
-    # Time change karne ke liye '30 5' ko badal lein
-    - cron: '30 5 * * *'
-  workflow_dispatch: # Manual Run button ke liye
-
-permissions:
-  contents: write # Ye sabse zaroori hai video delete karne ke liye
+    - cron: '0 */3 * * *' # Har 3 ghante mein auto-run hoga
 
 jobs:
-  process-video:
+  build-and-run:
     runs-on: ubuntu-latest
     
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository Code
         uses: actions/checkout@v3
 
-      - name: Set up Python
+      - name: Set up Python 3.9
         uses: actions/setup-python@v4
         with:
           python-version: '3.9'
 
-      - name: Install Dependencies
-        run: pip install requests
+      - name: Install Chrome and Dependencies
+        run: |
+          # Chrome browser GitHub runner mein pehle se hota hai
+          # Hume bas Selenium aur baki libraries install karni hain
+          pip install selenium webdriver-manager requests
 
-      - name: Run Script with Timeout
+      - name: Run DeepAI Automation Script
         env:
+          # Inhe GitHub Secrets mein add karna zaroori hai
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-        # Logic: 110 seconds (1m 50s) ke baad script kill ho jayega
-        # Agar timeout hua, to agla step (Delete) run NAHI karega (Safe mode)
-        run: timeout 110s python main.py
-
-      - name: Delete Processed Video from Repo
-        # Ye step tabhi chalega agar Python script success raha (Timeout nahi hua)
-        run: |
-          git config --global user.name "GitHub Actions Bot"
-          git config --global user.email "actions@github.com"
-          
-          # Check karein agar koi file delete hui hai
-          if [ -n "$(git status --porcelain)" ]; then
-            git add -u content/video/
-            git commit -m "Deleted processed video to prevent repeat [skip ci]"
-            git push
-            echo "SUCCESS: Video permanently deleted from repository."
-          else
-            echo "No video processed or script failed before deletion."
-          fi
+        run: python bot.py
