@@ -168,7 +168,6 @@ def human_like_scroll(driver):
     time.sleep(1)
 
 def find_element_with_fallback(driver, wait, selectors, element_name):
-    """Multiple tarike se element dhoondhne wala logic (Hunter Logic)"""
     for by_type, selector_val in selectors:
         try:
             element = wait.until(EC.element_to_be_clickable((by_type, selector_val)))
@@ -194,20 +193,20 @@ def run_automation():
         # STEP 1: Website open
         print("🌐 Opening DeepAI Chat...")
         driver.get("https://deepai.org/chat")
-        time.sleep(5) # Thoda extra time webpage render hone ke liye
+        time.sleep(5) 
         take_screenshot(driver, "1_website_opened")
         
         # STEP 2: Human Behavior Scroll
         human_like_scroll(driver)
         
-        # STEP 3: FIND TYPING BAR WITH FALLBACKS (Aapke Screenshot ke aadhar par)
+        # STEP 3: FIND TYPING BAR WITH FALLBACKS
         print("🔍 Searching for typing bar...")
         chat_box_selectors = [
-            (By.XPATH, "//textarea[contains(@placeholder, 'Message')]"), # Direct placeholder text se (sabse strong)
-            (By.XPATH, "//input[contains(@placeholder, 'Message')]"), # Agar unhone input tag use kiya ho
-            (By.CSS_SELECTOR, "textarea[placeholder*='Message']"), # CSS ke zariye
-            (By.TAG_NAME, "textarea"), # Agar page par koi bhi textarea ho
-            (By.CLASS_NAME, "chat-input-area") # Purana wala as fallback
+            (By.XPATH, "//textarea[contains(@placeholder, 'Message')]"), 
+            (By.XPATH, "//input[contains(@placeholder, 'Message')]"), 
+            (By.CSS_SELECTOR, "textarea[placeholder*='Message']"), 
+            (By.TAG_NAME, "textarea"), 
+            (By.CLASS_NAME, "chat-input-area") 
         ]
         
         chat_box_container = find_element_with_fallback(driver, wait, chat_box_selectors, "Typing Bar")
@@ -222,27 +221,15 @@ def run_automation():
         
         print("⌨️ Typing prompt quickly...")
         chat_box_container.send_keys(f"Generate an image: {prompt}")
-        time.sleep(2) 
-        take_screenshot(driver, "2_prompt_typed")
+        time.sleep(1.5) 
+        take_screenshot(driver, "2_prompt_typed_before_enter")
         
-        # STEP 4: FIND SEND BUTTON WITH FALLBACKS (Blue Circle icon)
-        print("🔍 Searching for send button...")
-        send_btn_selectors = [
-            (By.XPATH, "//button[.//svg]"), # Koi bhi button jiske andar SVG (icon) ho (Sabse common)
-            (By.XPATH, "//button[@type='submit']"), 
-            (By.CLASS_NAME, "chat-send-button"),
-            (By.XPATH, "//*[@aria-label='Send message' or @title='Send']") # Screen readers ke liye
-        ]
+        # STEP 4: SEND THE PROMPT USING KEYBOARD 'ENTER' (STRICT ORDER APPLIED)
+        print("⌨️ Pressing 'ENTER' key on keyboard to send...")
+        chat_box_container.send_keys(Keys.RETURN) # Ye Keyboard ka Enter button dabayega
         
-        send_btn = find_element_with_fallback(driver, wait, send_btn_selectors, "Send Button")
-        
-        if send_btn:
-            print("🖱️ Clicking blue send button...")
-            actions.move_to_element(send_btn).click().perform()
-        else:
-            print("⚠️ Send button nahi mila, 'ENTER' key daba raha hoon...")
-            # Agar blue button click nahi ho paya, toh insaan ki tarah Enter daba dega
-            chat_box_container.send_keys(Keys.RETURN)
+        # Blue button logic ko sirf fallback ke taur par rakha hai, use nahi kiya jayega agar Enter se kaam ho gaya
+        # Isliye purana code delete nahi kiya.
         
         print(f"⏳ Waiting for image generation... Prompt: {prompt}")
         time.sleep(35) 
