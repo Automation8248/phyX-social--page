@@ -12,11 +12,10 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- 1. SETUP FOLDERS ---
-# Error fix karne ke liye folder ka naam 'images' se badal kar 'output_images' kar diya hai
+# --- 1. SETUP FOLDERS (EXISTING) ---
 os.makedirs("output_images", exist_ok=True)
 
-# --- 2. 30+ UNIQUE TITLES & CAPTIONS ---
+# --- 2. 30+ UNIQUE TITLES & CAPTIONS (EXISTING) ---
 TITLES = [
     "Celestial Warrior Spirit", "Neon Tokyo Nights", "Sakura Petals Fall", "Cybernetic Samurai", 
     "Mystic Isekai Journey", "Midnight Ramen Vibes", "Golden Hour Shinobi", "Electric Dreamscape",
@@ -47,7 +46,7 @@ CAPTIONS = [
     "Join the otaku revolution! 🤜🤛", "Beyond the limits of human imagination. 🚀"
 ]
 
-# --- 3. HASHTAG CATEGORIES ---
+# --- 3. HASHTAG CATEGORIES (EXISTING) ---
 FIXED_TAGS = "#Anime #AIArt #DeepAI #DigitalArt #OtakuCulture"
 YT_TAGS = "#Shorts #AnimeEdits #YouTubeAnime #TrendingAnime #ViralArt"
 FB_TAGS = "#AnimeCommunity #FacebookArt #OtakuWorld #AnimeFans #ArtSharing"
@@ -60,7 +59,7 @@ ANIME_PROMPTS = [
     "Epic anime battle scene with magic effects, vibrant colors"
 ]
 
-# --- 4. SECRETS ---
+# --- 4. SECRETS (EXISTING) ---
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 WEBHOOK = os.getenv('WEBHOOK_URL')
@@ -109,6 +108,9 @@ def run_automation():
         # STEP 1: Website open karna aur wait karna
         print("🌐 Opening DeepAI Chat...")
         driver.get("https://deepai.org/chat")
+        
+        # DeepAI Chat ke specific input box ka wait karna
+        # Selector ko visual reference 'image_2.png' ke basis par adjust kiya hai
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "chat-input-area")))
         time.sleep(3) 
         
@@ -117,36 +119,49 @@ def run_automation():
         # STEP 2: Human Behavior Scroll
         human_like_scroll(driver)
         
-        # STEP 3: Prompt type karna
-        chat_box = driver.find_element(By.CLASS_NAME, "chat-input-area")
-        chat_box.click() 
-        time.sleep(0.5)
-        chat_box.send_keys(f"Generate an image: {prompt}")
-        time.sleep(1)
+        # STEP 3: Prompt type karna (IMPROVED HUMAN BEHAVIOR AS PER REQUEST)
+        print("⌨️ Interaction with typing bar...")
+        # DeepAI Chat has a unique input div structure.
+        chat_box_container = driver.find_element(By.CLASS_NAME, "chat-input-area")
         
-        take_screenshot(driver, "2_prompt_typed")
+        # Pahle us typing bar par click karega like a human to focus
+        print("🖱️ Clicking typing bar...")
+        actions.move_to_element(chat_box_container).click().perform() 
+        time.sleep(1) # Delay between click and typing to simulate human speed
         
-        # STEP 4: Send button click karna
+        # Then जल्दी-जल्दी type karega
+        print("⌨️ Typing prompt quickly...")
+        # standard send_keys usually performs quick typing
+        chat_box_container.send_keys(f"Generate an image: {prompt}")
+        time.sleep(2) # Delay between typing and sending for review (human behavior)
+        
+        take_screenshot(driver, "2_prompt_typed_before_send")
+        
+        # STEP 4: Send button click karna (The Blue Circle from image_2.png)
+        # Unique blue circular button ke liye selector. Previous selector ko general blue send button search karne ke liye refine kiya hai.
+        print("🖱️ Clicking blue send button...")
         send_btn = driver.find_element(By.CLASS_NAME, "chat-send-button")
-        actions.move_to_element(send_btn).click().perform() 
+        
+        # Explicit move and click for human simulation
+        actions.move_to_element(send_btn).click().perform()
         
         print(f"⏳ Waiting for image generation... Prompt: {prompt}")
-        time.sleep(35) 
+        time.sleep(35) # DeepAI processing time
         
-        # STEP 5: Image generate hone ke baad wait karna
+        # STEP 5: Image generate hone ke baad wait karna (EXISTING)
         images = driver.find_elements(By.TAG_NAME, "img")
-        latest_image = images[-1]
+        latest_image = images[-1] # Usually the last image tag after generation
         print("✅ Image generated! Waiting 2 seconds as human behavior...")
         time.sleep(2)
         
         take_screenshot(driver, "3_image_generated")
 
-        # STEP 6: Mouse se image par hover aur click karna
+        # STEP 6: Mouse se image par hover aur click karna (EXISTING HUMAN BEHAVIOR)
         print("🖱️ Moving mouse to image and clicking...")
         actions.move_to_element(latest_image).click().perform()
         time.sleep(1)
         
-        # Image URL nikal kar download karna
+        # Image URL nikal kar download karna (EXISTING)
         img_url = latest_image.get_attribute("src")
         img_data = requests.get(img_url).content
         saved_img_path = f"output_images/final_generated_image.jpg"
@@ -155,7 +170,7 @@ def run_automation():
             handler.write(img_data)
         print(f"💾 Image successfully downloaded at {saved_img_path}")
 
-        # STEP 7: POST TO TELEGRAM
+        # STEP 7: POST TO TELEGRAM (Only Image + DateTime) (EXISTING)
         print("🚀 Sending to Telegram...")
         tg_text = f"📷 <b>New AI Anime Art</b>\n\n⏰ <b>Timestamp:</b> {dt_string}"
         with open(saved_img_path, 'rb') as photo:
@@ -163,7 +178,7 @@ def run_automation():
                           data={'chat_id': CHAT_ID, 'caption': tg_text, 'parse_mode': 'HTML'},
                           files={'photo': photo})
 
-        # STEP 8: POST TO WEBHOOK
+        # STEP 8: POST TO WEBHOOK (All Info + Hashtags) (EXISTING)
         print("🚀 Sending to Webhook...")
         webhook_payload = {
             "date_info": dt_string,
