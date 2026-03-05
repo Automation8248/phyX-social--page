@@ -9,9 +9,14 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- 30+ UNIQUE TITLES ---
+# --- 1. SETUP FOLDERS ---
+# Screenshot aur images save karne ke liye folder banayega
+os.makedirs("images", exist_ok=True)
+
+# --- 2. 30+ UNIQUE TITLES & CAPTIONS ---
 TITLES = [
     "Celestial Warrior Spirit", "Neon Tokyo Nights", "Sakura Petals Fall", "Cybernetic Samurai", 
     "Mystic Isekai Journey", "Midnight Ramen Vibes", "Golden Hour Shinobi", "Electric Dreamscape",
@@ -23,7 +28,6 @@ TITLES = [
     "Parallel Universe Gate", "Legend of the Seven Stars", "Phantom Thief Mask", "Wind Walker"
 ]
 
-# --- 30+ UNIQUE CAPTIONS ---
 CAPTIONS = [
     "Witness the power of digital anime art! 🎨", "Every pixel tells a legendary story. ✨", 
     "Step into a world where imagination meets AI. 🌟", "The detail in this anime style is insane! 🔥",
@@ -43,7 +47,7 @@ CAPTIONS = [
     "Join the otaku revolution! 🤜🤛", "Beyond the limits of human imagination. 🚀"
 ]
 
-# --- HASHTAG CATEGORIES ---
+# --- 3. HASHTAG CATEGORIES ---
 FIXED_TAGS = "#Anime #AIArt #DeepAI #DigitalArt #OtakuCulture"
 YT_TAGS = "#Shorts #AnimeEdits #YouTubeAnime #TrendingAnime #ViralArt"
 FB_TAGS = "#AnimeCommunity #FacebookArt #OtakuWorld #AnimeFans #ArtSharing"
@@ -56,6 +60,7 @@ ANIME_PROMPTS = [
     "Epic anime battle scene with magic effects, vibrant colors"
 ]
 
+# --- 4. SECRETS ---
 TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
 CHAT_ID = os.getenv('TELEGRAM_CHAT_ID')
 WEBHOOK = os.getenv('WEBHOOK_URL')
@@ -63,49 +68,105 @@ WEBHOOK = os.getenv('WEBHOOK_URL')
 def setup_browser():
     options = Options()
     options.add_argument("--headless")
+    options.add_argument("--window-size=1920,1080") # Screenshot clear aane ke liye
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     return driver
 
+def take_screenshot(driver, step_name):
+    timestamp = datetime.now().strftime("%Y%md_%H%M%S")
+    filepath = f"images/{step_name}_{timestamp}.png"
+    driver.save_screenshot(filepath)
+    print(f"📸 Screenshot saved: {filepath}")
+
+def human_like_scroll(driver):
+    print("🚶‍♂️ Simulating human scroll behavior...")
+    # Thoda neeche scroll karna
+    for i in range(1, 600, 100):
+        driver.execute_script(f"window.scrollTo(0, {i});")
+        time.sleep(0.2)
+    time.sleep(1)
+    # Wapas upar aana
+    for i in range(600, 0, -150):
+        driver.execute_script(f"window.scrollTo(0, {i});")
+        time.sleep(0.2)
+    driver.execute_script("window.scrollTo(0, 0);")
+    time.sleep(1)
+
 def run_automation():
     driver = setup_browser()
     wait = WebDriverWait(driver, 40)
+    actions = ActionChains(driver)
     
-    # Random selection
     title = random.choice(TITLES)
     caption = random.choice(CAPTIONS)
     prompt = random.choice(ANIME_PROMPTS)
     
-    # Detailed Date-Time
     now = datetime.now()
     dt_string = now.strftime("%A, %d %B %Y | %I:%M:%S %p")
 
     try:
+        # STEP 1: Website open karna aur wait karna
+        print("🌐 Opening DeepAI Chat...")
         driver.get("https://deepai.org/chat")
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "chat-input-area")))
+        time.sleep(3) # Extra wait for full load
         
-        # Chat box input
-        chat_box = wait.until(EC.presence_of_element_located((By.CLASS_NAME, "chat-input-area")))
+        take_screenshot(driver, "1_website_opened")
+        
+        # STEP 2: Human Behavior Scroll
+        human_like_scroll(driver)
+        
+        # STEP 3: Prompt type karna
+        chat_box = driver.find_element(By.CLASS_NAME, "chat-input-area")
+        chat_box.click() # Click like a human
+        time.sleep(0.5)
         chat_box.send_keys(f"Generate an image: {prompt}")
+        time.sleep(1)
         
-        # Send
+        take_screenshot(driver, "2_prompt_typed")
+        
+        # STEP 4: Send button click karna
         send_btn = driver.find_element(By.CLASS_NAME, "chat-send-button")
-        send_btn.click()
+        actions.move_to_element(send_btn).click().perform() # Human mouse movement
         
-        print(f"Generating for prompt: {prompt}...")
-        time.sleep(30) # Waiting for image
+        print(f"⏳ Waiting for image generation... Prompt: {prompt}")
+        time.sleep(35) # DeepAI processing time
         
-        # Get Image URL
+        # STEP 5: Image generate hone ke baad 2 seconds extra wait karna
         images = driver.find_elements(By.TAG_NAME, "img")
-        img_url = images[-1].get_attribute("src")
+        latest_image = images[-1]
+        print("✅ Image generated! Waiting 2 seconds as human behavior...")
+        time.sleep(2)
+        
+        take_screenshot(driver, "3_image_generated")
 
-        # 1. TELEGRAM: Only Image + Date/Time
+        # STEP 6: Mouse se image par hover aur click karna (Human Behavior)
+        print("🖱️ Moving mouse to image and clicking...")
+        actions.move_to_element(latest_image).click().perform()
+        time.sleep(1)
+        
+        # Image URL nikal kar download karna (Kyunki headless me 'Save As' box nahi khulta)
+        img_url = latest_image.get_attribute("src")
+        img_data = requests.get(img_url).content
+        saved_img_path = f"images/final_generated_image.jpg"
+        
+        with open(saved_img_path, 'wb') as handler:
+            handler.write(img_data)
+        print(f"💾 Image successfully downloaded at {saved_img_path}")
+
+        # STEP 7: POST TO TELEGRAM (Only Image + DateTime)
+        print("🚀 Sending to Telegram...")
         tg_text = f"📷 <b>New AI Anime Art</b>\n\n⏰ <b>Timestamp:</b> {dt_string}"
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", 
-                      data={'chat_id': CHAT_ID, 'photo': img_url, 'caption': tg_text, 'parse_mode': 'HTML'})
+        with open(saved_img_path, 'rb') as photo:
+            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto", 
+                          data={'chat_id': CHAT_ID, 'caption': tg_text, 'parse_mode': 'HTML'},
+                          files={'photo': photo})
 
-        # 2. WEBHOOK: All details + Separate Hashtags
+        # STEP 8: POST TO WEBHOOK (All Info + Hashtags)
+        print("🚀 Sending to Webhook...")
         webhook_payload = {
             "date_info": dt_string,
             "title": title,
@@ -120,10 +181,11 @@ def run_automation():
         }
         requests.post(WEBHOOK, json=webhook_payload)
         
-        print(f"Successfully posted at {dt_string}")
+        print(f"🎉 All tasks completed successfully at {dt_string}!")
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"❌ Error occurred: {e}")
+        take_screenshot(driver, "error_state") # Agar fail ho to error ka screenshot lega
     finally:
         driver.quit()
 
