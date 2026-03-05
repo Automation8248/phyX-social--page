@@ -1,9 +1,9 @@
 name: DeepAI Anime Automation Bot
 
 on:
-  workflow_dispatch: # Manual button se chalane ke liye
+  workflow_dispatch:
   schedule:
-    - cron: '0 */3 * * *' # Har 3 ghante mein auto-run hoga
+    - cron: '0 */3 * * *'
 
 jobs:
   build-and-run:
@@ -20,14 +20,19 @@ jobs:
 
       - name: Install Chrome and Dependencies
         run: |
-          # Chrome browser GitHub runner mein pehle se hota hai
-          # Hume bas Selenium aur baki libraries install karni hain
           pip install selenium webdriver-manager requests
 
       - name: Run DeepAI Automation Script
         env:
-          # Inhe GitHub Secrets mein add karna zaroori hai
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
         run: python main.py
+
+      # YEH NAYA STEP HAI (Screenshots save karne ke liye)
+      - name: Upload Screenshots
+        uses: actions/upload-artifact@v4
+        if: always() # Yeh line zaroori hai taaki error aane par bhi photo save ho
+        with:
+          name: automation-screenshots
+          path: output_images/
