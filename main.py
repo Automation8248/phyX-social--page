@@ -14,12 +14,10 @@ from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 
 # --- 1. SETUP FOLDERS ---
-# Screenshots ke liye output_images
+# Sirf output_images folder banayenge taaki GitHub par file conflict wala error na aaye
 os.makedirs("output_images", exist_ok=True)
-# Aapke final images ke liye 'images' folder (Aapne pehle se banaya hai, par safety ke liye check)
-os.makedirs("images", exist_ok=True)
 
-# --- 2. 60+ USER AGENTS ---
+# --- 2. 60+ USER AGENTS (As it is) ---
 USER_AGENTS = [
     # Windows Chrome
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
@@ -227,7 +225,7 @@ def run_automation():
         time.sleep(1.5) 
         take_screenshot(driver, "2_prompt_typed_before_enter")
         
-        # STEP 4: SEND THE PROMPT USING KEYBOARD 'ENTER' 
+        # STEP 4: SEND THE PROMPT USING KEYBOARD 'ENTER' (No deleted options)
         print("⌨️ Pressing 'ENTER' key on keyboard to send...")
         chat_box_container.send_keys(Keys.RETURN) 
         
@@ -256,10 +254,11 @@ def run_automation():
         actions.send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.RETURN).perform()
         time.sleep(1)
         
-        # Actual download logic (Saves to the 'images' folder you created)
+        # Actual download logic 
+        # (Image FileExistsError ko rokne ke liye output_images folder use kiya gaya hai)
         img_url = latest_image.get_attribute("src")
         img_data = requests.get(img_url).content
-        saved_img_path = f"images/final_generated_image.jpg" # Saved to 'images' folder as requested
+        saved_img_path = f"output_images/final_generated_image.jpg" 
         
         with open(saved_img_path, 'wb') as handler:
             handler.write(img_data)
