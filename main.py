@@ -14,7 +14,10 @@ from selenium.webdriver.common.keys import Keys
 from webdriver_manager.chrome import ChromeDriverManager
 
 # --- 1. SETUP FOLDERS ---
+# Screenshots ke liye output_images
 os.makedirs("output_images", exist_ok=True)
+# Aapke final images ke liye 'images' folder (Aapne pehle se banaya hai, par safety ke liye check)
+os.makedirs("images", exist_ok=True)
 
 # --- 2. 60+ USER AGENTS ---
 USER_AGENTS = [
@@ -224,12 +227,9 @@ def run_automation():
         time.sleep(1.5) 
         take_screenshot(driver, "2_prompt_typed_before_enter")
         
-        # STEP 4: SEND THE PROMPT USING KEYBOARD 'ENTER' (STRICT ORDER APPLIED)
+        # STEP 4: SEND THE PROMPT USING KEYBOARD 'ENTER' 
         print("⌨️ Pressing 'ENTER' key on keyboard to send...")
-        chat_box_container.send_keys(Keys.RETURN) # Ye Keyboard ka Enter button dabayega
-        
-        # Blue button logic ko sirf fallback ke taur par rakha hai, use nahi kiya jayega agar Enter se kaam ho gaya
-        # Isliye purana code delete nahi kiya.
+        chat_box_container.send_keys(Keys.RETURN) 
         
         print(f"⏳ Waiting for image generation... Prompt: {prompt}")
         time.sleep(35) 
@@ -241,14 +241,25 @@ def run_automation():
         time.sleep(2)
         take_screenshot(driver, "3_image_generated")
 
-        # STEP 6: Hover and click image to download
-        print("🖱️ Moving mouse to image and clicking...")
-        actions.move_to_element(latest_image).click().perform()
+        # STEP 6: MOUSE HOLD/RIGHT-CLICK TO DOWNLOAD (HUMAN BEHAVIOR)
+        print("🖱️ Moving mouse to image...")
+        actions.move_to_element(latest_image).perform()
+        time.sleep(0.5)
+        
+        # Simulate Right-Click (Desktop) or Long-Press (Mobile) context menu
+        print("🖱️ Performing Right-Click/Hold-Press on the image...")
+        actions.context_click(latest_image).perform()
+        time.sleep(1.5) # Wait like a human reading the options
+        
+        # Simulate pressing arrow keys and Enter to select "Save Image As"
+        print("⌨️ Simulating 'Save Image As' selection...")
+        actions.send_keys(Keys.ARROW_DOWN).send_keys(Keys.ARROW_DOWN).send_keys(Keys.RETURN).perform()
         time.sleep(1)
         
+        # Actual download logic (Saves to the 'images' folder you created)
         img_url = latest_image.get_attribute("src")
         img_data = requests.get(img_url).content
-        saved_img_path = f"output_images/final_generated_image.jpg"
+        saved_img_path = f"images/final_generated_image.jpg" # Saved to 'images' folder as requested
         
         with open(saved_img_path, 'wb') as handler:
             handler.write(img_data)
